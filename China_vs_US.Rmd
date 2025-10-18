@@ -17,6 +17,9 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(showtext)
+
+font_add("Calibri", "C:/Windows/Fonts/calibri.ttf")  # path for Windows
+showtext_auto()
 ```
 
 
@@ -37,105 +40,131 @@ df_lite <- df_lite %>% filter(Cancer %in% top5_cancers$Cancer)
 
 
 ```{r}
-ggplot(df_lite, aes(x=Year, y=Articles, colour = Country))+
-  geom_point()
-```
-
-
-
-```{r}
 df_stats <- df_lite %>% pivot_wider(names_from = Cancer, values_from = Articles)
 
 df_stats$Mean <- rowMeans(df_stats[unique(df_lite$Cancer)])
-
-
-for(row in 1:nrow(df_stats)){
-  df_stats[row, "Q25"] <- quantile(as.numeric(df_stats[row, unique(df_lite$Cancer)]), probs = c(0.25))
-  df_stats[row, "Q50"] <- quantile(as.numeric(df_stats[row, unique(df_lite$Cancer)]), probs = c(0.50))
-  df_stats[row, "Q75"] <- quantile(as.numeric(df_stats[row, unique(df_lite$Cancer)]), probs = c(0.75))
-}
 ```
 
 
 
-```{r}
-ggplot(df_stats, aes(x=Year, y=Q50))+
-  geom_line(aes(colour = Country))+
-  geom_ribbon(aes(ymin = Q25, ymax = Q75, fill = Country), alpha = .15) +
-  xlim(1987, 2025)
-```
+```{r, warning=FALSE}
+font_size = 18
 
-
-
-```{r}
-df_stats_2 <- df_lite %>% pivot_wider(names_from = Cancer, values_from = Articles)
-
-df_stats_2$Mean <- rowMeans(df_stats_2[unique(df_lite$Cancer)])
-
-
-for(row in 1:nrow(df_stats_2)){
-  upper <- as.data.frame(t(df_stats[row,unique(df_lite$Cancer)])) %>% filter(V1 > as.numeric(df_stats[row, "Mean"]))
-  lower <- as.data.frame(t(df_stats[row,unique(df_lite$Cancer)])) %>% filter(V1 < as.numeric(df_stats[row, "Mean"]))
-  
-  df_stats_2[row, "upper_SD"] <- sd(upper$V1)
-  df_stats_2[row, "lower_SD"] <- sd(lower$V1)
-}
-```
-
-
-```{r}
-ggplot(df_stats_2, aes(x=Year, y=Mean))+
-  geom_line(aes(colour = Country))+
-  geom_ribbon(aes(ymin = Mean - lower_SD, ymax = Mean + upper_SD, fill = Country), alpha = .15) +
-  xlim(1987, 2025)
-```
-
-
-```{r}
-df_stats_3 <- df_lite %>% pivot_wider(names_from = Cancer, values_from = Articles)
-
-df_stats_3$Mean <- rowMeans(df_stats_3[unique(df_lite$Cancer)])
-
-for(row in 1:nrow(df_stats_3)){
-  df_stats_3[row, "SD"] <- sd(as.numeric(df_stats_3[row, unique(df_lite$Cancer)]))
-}
-```
-
-```{r}
-ggplot(df_stats, aes(x = Year, y = Mean, colour = Country))+
-  geom_line(linewidth = 1)+
-  geom_line(data = df_lite %>% filter(Country == "United States"), aes(x=Year, y=Articles, group = Cancer))+
-  geom_line(data = df_lite %>% filter(Country == "China"), aes(x=Year, y=Articles, group = Cancer))+
-  xlim(1990, 2024)+
-  #theme(axis.title = element_text(family = "Calibri"))
+p1 <- ggplot(df_stats, aes(x = Year, y = Mean, colour = Country))+
+  geom_line(linewidth = 1.2)+
+  geom_line(data = df_lite %>% filter(Country == "United States"), aes(x=Year, y=Articles, group = Cancer), linewidth = 0.55, linetype = "dashed")+
+  geom_line(data = df_lite %>% filter(Country == "China"), aes(x=Year, y=Articles, group = Cancer), linewidth = 0.55, linetype = "dashed")+
+  scale_x_continuous(limits = c(1990, 2024), breaks = seq(1990, 2024, 2))+
+  scale_color_manual(values = c("China" = "#A000C2",
+                                "United States" = "#166128"))+
   theme_minimal(base_family = "Calibri")+
+  ylab("Studies")+
   theme(
-    text = element_text(family = "Calibri"),
+    plot.background = element_rect(fill = '#f6f8fa'),
+    text = element_text(family = "Calibri", size = font_size),
+    axis.text.x = element_text(angle = 90),
     plot.title = element_text(size = 18, face = "bold"),
     plot.subtitle = element_text(size = 14)
+  )
+
+p1
+```
+
+
+
+
+
+
+```{r}
+df_full <- read.csv(file.path(proj_dir, "articles_country_year_cancer.csv"))
+
+df_full_lite <- df_full %>% filter(Cancer %in% top5_cancers$Cancer)
+```
+
+
+```{r}
+df_compiled_disc <- data.frame(matrix(nrow = 3, ncol = 0))
+
+df_compiled_disc$Country <- factor(x=c("China", "United States", "Others"),
+                                   levels = rev(c("China", "United States", "Others")))
+rownames(df_compiled_disc) <- df_compiled_disc$Country
+df_compiled_disc$Y1990 <- NA
+df_compiled_disc$Y2024 <- NA
+
+
+df_compiled_disc["China", "Y1990"] <- sum((df_full_lite %>% filter(Year == 1990 & Country == "China"))$Articles)
+df_compiled_disc["United States", "Y1990"] <- sum((df_full_lite %>% filter(Year == 1990 & Country == "United States"))$Articles)
+df_compiled_disc["Others", "Y1990"] <- sum((df_full_lite %>% filter(Year == 1990 & !Country %in% c("China", "United States")))$Articles)
+
+df_compiled_disc["China", "Y2024"] <- sum((df_full_lite %>% filter(Year == 2024 & Country == "China"))$Articles)
+df_compiled_disc["United States", "Y2024"] <- sum((df_full_lite %>% filter(Year == 2024 & Country == "United States"))$Articles)
+df_compiled_disc["Others", "Y2024"] <- sum((df_full_lite %>% filter(Year == 2024 & !Country %in% c("China", "United States")))$Articles)
+
+
+sum_1990 <- sum(df_compiled_disc$Y1990)
+sum_2024 <- sum(df_compiled_disc$Y2024)
+
+df_compiled_disc["China", "Y1990"] <- df_compiled_disc["China", "Y1990"] / sum_1990 * 100
+df_compiled_disc["United States", "Y1990"] <- df_compiled_disc["United States", "Y1990"] / sum_1990 * 100
+df_compiled_disc["Others", "Y1990"] <- df_compiled_disc["Others", "Y1990"] / sum_1990 * 100
+
+df_compiled_disc["China", "Y2024"] <- df_compiled_disc["China", "Y2024"] / sum_2024 * 100
+df_compiled_disc["United States", "Y2024"] <- df_compiled_disc["United States", "Y2024"] / sum_2024 * 100
+df_compiled_disc["Others", "Y2024"] <- df_compiled_disc["Others", "Y2024"] / sum_2024 * 100
+
+# Position of labels
+df_compiled_disc$ymax_1990 <- cumsum(df_compiled_disc$Y1990)
+df_compiled_disc$ymin_1990 <- c(0, head(df_compiled_disc$ymax_1990, n=-1))
+df_compiled_disc$label_position_1990 <- (df_compiled_disc$ymax_1990+df_compiled_disc$ymin_1990)/2
+
+df_compiled_disc$ymax_2024 <- cumsum(df_compiled_disc$Y2024)
+df_compiled_disc$ymin_2024 <- c(0, head(df_compiled_disc$ymax_2024, n=-1))
+df_compiled_disc$label_position_2024 <- (df_compiled_disc$ymax_2024+df_compiled_disc$ymin_2024)/2
+
+df_compiled_disc$Y1990 <- round(df_compiled_disc$Y1990, 2)
+df_compiled_disc$Y1990_text <- paste0(as.character(df_compiled_disc$Y1990), "%")
+
+df_compiled_disc$Y2024 <- round(df_compiled_disc$Y2024, 2)
+df_compiled_disc$Y2024_text <-  paste0(df_compiled_disc$Y2024, "%")
+
+df_compiled_disc <- df_compiled_disc[,c("Country", "Y1990", "Y2024", "Y1990_text", "Y2024_text", "label_position_1990", "label_position_2024")]
+```
+
+
+```{r}
+ggplot(df_compiled_disc, aes(x="", y=Y1990, fill=Country))+
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0)+
+  geom_text(aes(x=1.7, y=label_position_1990, label=Y1990_text), inherit.aes = FALSE, hjust=0.5, vjust=1, family = "Calibri", size = font_size-12)+
+  scale_fill_manual(breaks = c("China", "United States", "Others"),
+                   values = c("China" = "#A000C2",
+                                "United States" = "#166128",
+                                "Others" = "lightgrey"))+
+  theme_minimal(base_family = "Calibri")+
+  theme(
+    plot.background = element_rect(fill = '#f6f8fa'),
+    text=element_blank()
   )
 ```
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```{r}
+ggplot(df_compiled_disc, aes(x="", y=Y2024, fill=Country))+
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0)+
+  geom_text(aes(x=1.7, y=label_position_2024, label=Y2024_text), inherit.aes = FALSE, hjust=0.5, vjust=1, family = "Calibri", size = font_size-12)+
+  scale_fill_manual(breaks = c("China", "United States", "Others"),
+                   values = c("China" = "#A000C2",
+                                "United States" = "#166128",
+                                "Others" = "lightgrey"))+
+  theme_minimal(base_family = "Calibri")+
+  theme(
+    plot.background = element_rect(fill = '#f6f8fa'),
+    text=element_blank()
+  )
+```
 
 
 
