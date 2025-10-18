@@ -11,9 +11,12 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
+if(!require("showtext")) install.packages("showtext")
+
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(showtext)
 ```
 
 
@@ -24,12 +27,12 @@ proj_dir <- file.path("C:", "Users", "svalb", "OneDrive", "Documentos", "GitHub"
 ```{r}
 df <- read.csv(file.path(proj_dir, "articles_country_year_cancer_lite.csv"))
 
-top10_cancers <- df %>% group_by(Cancer) %>% summarise(articles_cancer = sum(Articles))
-top10_cancers <- (top10_cancers[order(top10_cancers$articles_cancer, decreasing = TRUE),] %>% filter(!Cancer == "Undetermined cancer"))[1:10,]
+top5_cancers <- df %>% group_by(Cancer) %>% summarise(articles_cancer = sum(Articles))
+top5_cancers <- (top5_cancers[order(top5_cancers$articles_cancer, decreasing = TRUE),] %>% filter(!Cancer %in% c("Undetermined cancer", "Other cancer")))[1:5,]
 
 df_lite <- df %>% filter(Country %in% c("China", "United States"))
-df_lite <- df_lite %>% filter(Cancer %in% top10_cancers$Cancer)
-
+df_lite <- df_lite %>% filter(Cancer %in% top5_cancers$Cancer)
+```
 
 
 
@@ -98,6 +101,20 @@ for(row in 1:nrow(df_stats_3)){
 }
 ```
 
+```{r}
+ggplot(df_stats, aes(x = Year, y = Mean, colour = Country))+
+  geom_line(linewidth = 1)+
+  geom_line(data = df_lite %>% filter(Country == "United States"), aes(x=Year, y=Articles, group = Cancer))+
+  geom_line(data = df_lite %>% filter(Country == "China"), aes(x=Year, y=Articles, group = Cancer))+
+  xlim(1990, 2024)+
+  #theme(axis.title = element_text(family = "Calibri"))
+  theme_minimal(base_family = "Calibri")+
+  theme(
+    text = element_text(family = "Calibri"),
+    plot.title = element_text(size = 18, face = "bold"),
+    plot.subtitle = element_text(size = 14)
+  )
+```
 
 
 
