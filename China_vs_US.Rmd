@@ -1,0 +1,134 @@
+---
+title: "Cancer research explorer - China vs US"
+author: "Sergio Valbuena"
+date: "2025-10-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r}
+proj_dir <- file.path("C:", "Users", "svalb", "OneDrive", "Documentos", "GitHub", "cancer_studies_deployment", "public", "data")
+```
+
+```{r}
+df <- read.csv(file.path(proj_dir, "articles_country_year_cancer_lite.csv"))
+
+top10_cancers <- df %>% group_by(Cancer) %>% summarise(articles_cancer = sum(Articles))
+top10_cancers <- (top10_cancers[order(top10_cancers$articles_cancer, decreasing = TRUE),] %>% filter(!Cancer == "Undetermined cancer"))[1:10,]
+
+df_lite <- df %>% filter(Country %in% c("China", "United States"))
+df_lite <- df_lite %>% filter(Cancer %in% top10_cancers$Cancer)
+
+
+
+
+```{r}
+ggplot(df_lite, aes(x=Year, y=Articles, colour = Country))+
+  geom_point()
+```
+
+
+
+```{r}
+df_stats <- df_lite %>% pivot_wider(names_from = Cancer, values_from = Articles)
+
+df_stats$Mean <- rowMeans(df_stats[unique(df_lite$Cancer)])
+
+
+for(row in 1:nrow(df_stats)){
+  df_stats[row, "Q25"] <- quantile(as.numeric(df_stats[row, unique(df_lite$Cancer)]), probs = c(0.25))
+  df_stats[row, "Q50"] <- quantile(as.numeric(df_stats[row, unique(df_lite$Cancer)]), probs = c(0.50))
+  df_stats[row, "Q75"] <- quantile(as.numeric(df_stats[row, unique(df_lite$Cancer)]), probs = c(0.75))
+}
+```
+
+
+
+```{r}
+ggplot(df_stats, aes(x=Year, y=Q50))+
+  geom_line(aes(colour = Country))+
+  geom_ribbon(aes(ymin = Q25, ymax = Q75, fill = Country), alpha = .15) +
+  xlim(1987, 2025)
+```
+
+
+
+```{r}
+df_stats_2 <- df_lite %>% pivot_wider(names_from = Cancer, values_from = Articles)
+
+df_stats_2$Mean <- rowMeans(df_stats_2[unique(df_lite$Cancer)])
+
+
+for(row in 1:nrow(df_stats_2)){
+  upper <- as.data.frame(t(df_stats[row,unique(df_lite$Cancer)])) %>% filter(V1 > as.numeric(df_stats[row, "Mean"]))
+  lower <- as.data.frame(t(df_stats[row,unique(df_lite$Cancer)])) %>% filter(V1 < as.numeric(df_stats[row, "Mean"]))
+  
+  df_stats_2[row, "upper_SD"] <- sd(upper$V1)
+  df_stats_2[row, "lower_SD"] <- sd(lower$V1)
+}
+```
+
+
+```{r}
+ggplot(df_stats_2, aes(x=Year, y=Mean))+
+  geom_line(aes(colour = Country))+
+  geom_ribbon(aes(ymin = Mean - lower_SD, ymax = Mean + upper_SD, fill = Country), alpha = .15) +
+  xlim(1987, 2025)
+```
+
+
+```{r}
+df_stats_3 <- df_lite %>% pivot_wider(names_from = Cancer, values_from = Articles)
+
+df_stats_3$Mean <- rowMeans(df_stats_3[unique(df_lite$Cancer)])
+
+for(row in 1:nrow(df_stats_3)){
+  df_stats_3[row, "SD"] <- sd(as.numeric(df_stats_3[row, unique(df_lite$Cancer)]))
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
