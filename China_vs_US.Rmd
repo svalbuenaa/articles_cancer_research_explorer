@@ -56,7 +56,7 @@ p1 <- ggplot(df_stats, aes(x = Year, y = Mean, colour = Country))+
   geom_line(linewidth = 1.2)+
   geom_line(data = df_lite %>% filter(Country == "United States"), aes(x=Year, y=Articles, group = Cancer), linewidth = 0.55, linetype = "dashed")+
   geom_line(data = df_lite %>% filter(Country == "China"), aes(x=Year, y=Articles, group = Cancer), linewidth = 0.55, linetype = "dashed")+
-  scale_y_continuous(expand = c(0,0))+
+  scale_y_continuous(limits = c(0, max((df_lite %>% filter(Country == "China"))[,"Articles"])*1.1), expand = c(0,0))+
   scale_x_continuous(limits = c(1990, 2024), breaks = seq(1990, 2024, 2), expand = c(0,0))+
   scale_color_manual(values = c("China" = "#A000C2",
                                 "United States" = "#166128"))+
@@ -65,14 +65,15 @@ p1 <- ggplot(df_stats, aes(x = Year, y = Mean, colour = Country))+
   labs(title = "Evolution of research about top 5 studied cancers in United States and China")+
   theme(
     plot.background = element_rect(fill = '#f6f8fa'),
-    text = element_text(family = "Calibri", size = font_size+3),
-    axis.title = element_text(size = font_size + 4),
+    text = element_text(family = "Calibri", size = font_size+4),
+    axis.title = element_text(size = font_size + 6),
     axis.text.x = element_text(angle = 90),
     plot.title = element_text(size = font_size + 16, family = "Calibri", hjust = 0.5),
     legend.position = "inside",
     legend.position.inside = c(0.65, 0.7),
     legend.title = element_blank(),
-    legend.text = element_text(size = font_size + 1)
+    legend.text = element_text(size = font_size + 6),
+    legend.spacing.y = unit(0.1, "cm") 
   )
 
 p1
@@ -146,7 +147,7 @@ df_compiled_disc <- df_compiled_disc[,c("Country", "Y1990", "Y2024", "Y1990_text
 pie1990 <- ggplot(df_compiled_disc, aes(x="", y=Y1990, fill=Country))+
   geom_bar(stat="identity", width=1, color="white") +
   coord_polar("y", start=0)+
-  geom_text(data = subset(df_compiled_disc, Country == "China"), aes(x=1.9, y=label_position_1990, label=Y1990_text), inherit.aes = FALSE, hjust=0.5, vjust=1, family = "Calibri", size = font_size-11)+
+  geom_text(data = subset(df_compiled_disc, Country == "China"), aes(x=1.9, y=label_position_1990, label=Y1990_text), inherit.aes = FALSE, hjust=0.5, vjust=1, family = "Calibri", size = font_size-10)+
   geom_text(data = subset(df_compiled_disc, Country == "United States"), aes(x=2, y=label_position_1990, label=Y1990_text), inherit.aes = FALSE, hjust=0.5, vjust=1, family = "Calibri", size = font_size-10)+
   scale_fill_manual(breaks = c("China", "United States"),
                    values = c("China" = "#A000C2",
@@ -157,8 +158,9 @@ pie1990 <- ggplot(df_compiled_disc, aes(x="", y=Y1990, fill=Country))+
   theme(
     plot.background = element_rect(fill = NA, linewidth = NA),
     text=element_blank(),
-    plot.title = element_text(family = "Calibri", size = font_size + 7, hjust = 0.5, margin = margin(t = 20, r = 0, b = 0, l = 0)),
+    plot.title = element_text(family = "Calibri", size = font_size + 7, hjust = 0.5, margin = margin(t = 21, r = 0, b = 0, l = 0)),
     panel.grid = element_blank(),
+    plot.margin = margin(t = -20, r = -20, b = -20, l = -20),
     legend.position = "none"
   )
 
@@ -172,7 +174,7 @@ pie1990
 pie2024 <- ggplot(df_compiled_disc, aes(x="", y=Y2024, fill=Country))+
   geom_bar(stat="identity", width=1, color="white") +
   coord_polar("y", start=0)+
-  geom_text(data = subset(df_compiled_disc, Country == "China"), aes(x=2, y=label_position_2024, label=Y2024_text), inherit.aes = FALSE, hjust=0.5, vjust=1, family = "Calibri", size = font_size-11)+
+  geom_text(data = subset(df_compiled_disc, Country == "China"), aes(x=2, y=label_position_2024, label=Y2024_text), inherit.aes = FALSE, hjust=0.5, vjust=1, family = "Calibri", size = font_size-10)+
   geom_text(data = subset(df_compiled_disc, Country == "United States"), aes(x=1.8, y=label_position_2024, label=Y2024_text), inherit.aes = FALSE, hjust=0.5, vjust=1, family = "Calibri", size = font_size-10)+
   scale_fill_manual(breaks = c("China", "United States"),
                    values = c("China" = "#A000C2",
@@ -183,8 +185,9 @@ pie2024 <- ggplot(df_compiled_disc, aes(x="", y=Y2024, fill=Country))+
   theme(
     plot.background = element_rect(fill = NA, linewidth = NA),
     text=element_blank(),
-    plot.title = element_text(family = "Calibri", size = font_size + 7, hjust = 0.5, margin = margin(t = 20, r = 0, b = 0, l = 0)),
+    plot.title = element_text(family = "Calibri", size = font_size + 7, hjust = 0.5, margin = margin(t = 21, r = 0, b = 0, l = 0)),
     panel.grid = element_blank(),
+    plot.margin = margin(t = -20, r = 40, b = -20, l = -40),
     legend.position = "none"
   )
 
@@ -208,7 +211,7 @@ transparent_spacer <- plot_spacer() +
 
 pies <-  pie1990 +  pie2024 
 
-full_plot <- p1 + inset_element(pies, left = -0.05, bottom = 0.4, right = 0.5, top = 1.1) & theme(plot.background = element_rect(linewidth = NA))
+full_plot <- p1 + inset_element(pies, left = -0.05, bottom = 0.35, right = 0.5, top = 1.05) & theme(plot.background = element_rect(linewidth = NA))
 
 full_plot 
 
