@@ -53,11 +53,11 @@ df_stats$Mean <- rowMeans(df_stats[unique(df_lite$Cancer)])
 font_size = 18
 
 p1 <- ggplot(df_stats, aes(x = Year, y = Mean, colour = Country))+
+  geom_line(data = df_lite %>% filter(Country == "United States"), aes(x=Year, y=Articles, group = Cancer), linewidth = 0.35, linetype = "dashed")+
+  geom_line(data = df_lite %>% filter(Country == "China"), aes(x=Year, y=Articles, group = Cancer), linewidth = 0.35, linetype = "dashed")+
   geom_line(linewidth = 1.2)+
-  geom_line(data = df_lite %>% filter(Country == "United States"), aes(x=Year, y=Articles, group = Cancer), linewidth = 0.55, linetype = "dashed")+
-  geom_line(data = df_lite %>% filter(Country == "China"), aes(x=Year, y=Articles, group = Cancer), linewidth = 0.55, linetype = "dashed")+
   scale_y_continuous(limits = c(0, max((df_lite %>% filter(Country == "China"))[,"Articles"])*1.1), expand = c(0,0))+
-  scale_x_continuous(limits = c(1990, 2024), breaks = seq(1990, 2024, 2), expand = c(0,0))+
+  scale_x_continuous(limits = c(1990, 2024), breaks = seq(1990, 2024, 2), expand = c(0.002,0.002))+
   scale_color_manual(values = c("China" = "#A000C2",
                                 "United States" = "#166128"))+
   theme_minimal(base_family = "Calibri")+
@@ -67,7 +67,7 @@ p1 <- ggplot(df_stats, aes(x = Year, y = Mean, colour = Country))+
     plot.background = element_rect(fill = '#f6f8fa'),
     text = element_text(family = "Calibri", size = font_size+4),
     axis.title = element_text(size = font_size + 6),
-    axis.text.x = element_text(angle = 90),
+    axis.text.x = element_text(angle = 90, vjust=0.5),
     plot.title = element_text(size = font_size + 16, family = "Calibri", hjust = 0.5),
     legend.position = "inside",
     legend.position.inside = c(0.65, 0.7),
@@ -81,6 +81,32 @@ p1
 
 
 
+```{r}
+p2 <- ggplot(df_stats, aes(x = Year, y = Mean, colour = Country))+
+  geom_line(linewidth = 0.5)+
+  scale_y_continuous(limits = c(0, max((df_stats %>% filter(Country == "China"))[,"Mean"])*1.1), expand = c(0,0))+
+  scale_x_continuous(limits = c(1990, 2024), breaks = seq(1990, 2024, 2), expand = c(0.002,0.002))+
+  scale_color_manual(values = c("China" = "#A000C2",
+                                "United States" = "#166128"))+
+  theme_minimal(base_family = "Calibri")+
+  ylab("Number of articles")+
+  labs(title = "Evolution of published articles about top 5 studied cancers in the United States and China")+
+  theme(
+    plot.background = element_rect(fill = '#f6f8fa'),
+    panel.grid.minor = element_blank(),
+    text = element_text(family = "Calibri", size = font_size+4),
+    axis.title = element_text(size = font_size + 6),
+    axis.text.x = element_text(angle = 90, vjust=0.5),
+    plot.title = element_text(size = font_size + 16, family = "Calibri", hjust = 0.5),
+    legend.position = "inside",
+    legend.position.inside = c(0.85, 0.1),
+    legend.title = element_blank(),
+    legend.text = element_text(size = font_size + 6),
+    legend.spacing.y = unit(0.1, "cm") 
+  )
+
+p2
+```
 
 
 
@@ -211,7 +237,7 @@ transparent_spacer <- plot_spacer() +
 
 pies <-  pie1990 +  pie2024 
 
-full_plot <- p1 + inset_element(pies, left = -0.05, bottom = 0.35, right = 0.5, top = 1.05) & theme(plot.background = element_rect(linewidth = NA))
+full_plot <- p1 + inset_element(pies, left = 0, bottom = 0.35, right = 0.55, top = 1.05) & theme(plot.background = element_rect(linewidth = NA))
 
 full_plot 
 
@@ -221,6 +247,25 @@ ggsave(plot = full_plot, filename = file.path(out_dir, "evolution_lines_pies.jpg
 
 
 
+```{r}
+width_out = 1920
+height_out = 1080
+
+transparent_spacer <- plot_spacer() + 
+  theme(
+    panel.background = element_rect(fill = NA, color = NA),
+    plot.background  = element_rect(fill = NA, color = NA)
+  )
+
+
+pies <-  pie1990 +  pie2024 
+
+full_plot_lite <- p2 + inset_element(pies, left = 0, bottom = 0.35, right = 0.55, top = 1.05) & theme(plot.background = element_rect(linewidth = NA))
+
+full_plot_lite
+
+ggsave(plot = full_plot_lite, filename = file.path(out_dir, "evolution_lines_pies_only_mean.jpg"), device = "jpg", width = width_out, height = height_out, units = "px")
+```
 
 
 
