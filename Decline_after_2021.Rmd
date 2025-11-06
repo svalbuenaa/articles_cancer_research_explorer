@@ -1,0 +1,229 @@
+---
+title: "Cancer research explorer - China vs US"
+author: "Sergio Valbuena"
+date: "2025-10-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+```{r}
+if(!require("showtext")) install.packages("showtext")
+
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(showtext)
+library(patchwork)
+
+font_add("Calibri", "C:/Windows/Fonts/calibri.ttf")  # path for Windows
+showtext_auto()
+```
+
+
+# Relevant directories
+```{r}
+proj_dir <- file.path("C:", "Users", "svalb", "OneDrive", "Documentos", "GitHub", "cancer_studies_deployment", "public", "data")
+out_dir <- file.path("C:", "Users", "svalb", "OneDrive", "Documentos", "GitHub", "articles_cancer_research_explorer")
+```
+
+
+
+# Import data
+```{r}
+df <- read.csv(file.path(proj_dir, "articles_country_year_cancer.csv"))
+df_total_articles_year <- read.csv(file.path(proj_dir, "articles_year.csv"))
+```
+
+# Calculate deltas 2021-2024
+```{r}
+# DF to store deltas
+df_deltas <- as.data.frame(matrix(nrow = length(unique(df$Country)), ncol = 5))
+colnames(df_deltas) <- c("Country", "Articles_2021", "Articles_2024", "Delta_2021_2024", "Percent_Delta_2021_2024")
+df_deltas$Country <- unique(df$Country)
+
+# Calculate deltas from 2021 to 2024
+for (country in df_deltas$Country){
+  articles_2021 <- sum(df[df$Country==country & df$Year==2021,"Articles"])
+  articles_2024 <- sum(df[df$Country==country & df$Year==2024,"Articles"])
+  
+  df_deltas[df_deltas$Country == country, "Articles_2021"] <- articles_2021
+  df_deltas[df_deltas$Country == country, "Articles_2024"] <- articles_2024
+  
+  df_deltas[df_deltas$Country==country, "Delta_2021_2024"] <- articles_2024-articles_2021
+  
+  df_deltas[df_deltas$Country==country, "Percent_Delta_2021_2024"] <- (articles_2024-articles_2021)*100/articles_2021
+}
+
+rm(articles_2021, articles_2024)
+
+# Keep only countries of interest
+top_increased_since_2021 <- df_deltas[order(df_deltas$Percent_Delta_2021_2024, decreasing = T), ]
+top_increased_since_2021 <- top_increased_since_2021 %>% filter(Articles_2021>500 & Percent_Delta_2021_2024 > 5)
+interest_increased <- top_increased_since_2021[top_increased_since_2021$Country %in% c("China", "India"),]
+interest_increased
+
+top_decreased_since_2021 <- df_deltas[order(df_deltas$Percent_Delta_2021_2024, decreasing = F), ]
+top_decreased_since_2021 <- top_decreased_since_2021 %>% filter(Articles_2021>500 & Percent_Delta_2021_2024 < -5)
+interest_decreased <- top_decreased_since_2021[top_decreased_since_2021$Country %in% c("France", "South Korea", "Germany", "United Kingdom", "Italy", "Japan", "United States"),]
+interest_decreased
+```
+
+
+```{r}
+interest_increased
+```
+
+# Normalize articles/year by articles in 2021
+```{r}
+target_time <- seq(1990, 2024)
+
+# DF to store normalized articles per year
+df_plot <- as.data.frame(matrix(nrow=nrow(rbind(interest_decreased, interest_increased))*length(target_time), ncol=3))
+colnames(df_plot) <- c("Country", "Year", "Norm_Articles")
+df_plot$Country <- rbind(interest_decreased, interest_increased)[,"Country"]
+df_plot$Year <- target_time
+
+# Calculate normalized articles/year
+for (country in df_plot$Country){
+  articles_2021 <- sum(df[df$Country==country & df$Year==2021,"Articles"])
+  
+  for(year in target_time){
+    articles_year <- sum(df[df$Country==country & df$Year == year, "Articles"])
+    df_plot[df_plot$Country == country & df_plot$Year == year, "Norm_Articles"] <- articles_year*100/articles_2021
+  }
+}
+```
+
+
+```{r}
+df_plot
+```
+
+
+
+
+
+```{r, fig.height=10}
+# Plot parameters
+font_size <- 18
+palette <- c("#002FA7", "#66355B", "#00B7EB","#C4501B", "#CCA700")
+
+## Annotations inset
+x_annot_2018 <- 1994
+x_annot_2021 <- 2000
+x_annot_2024 <- 2006
+y_annot <- 115 
+margin_y_curve <- 4
+margin_x_curve <- 0.9
+arrow_curve <- arrow(length = unit(0.02, "npc"), type="closed", angle = 20)
+color_annot <- "black"
+
+## Font size and family
+size_annot <- (font_size+12)/.pt
+family_annot <- "Calibri"
+
+# Subset countries and years of interest, calculate sign of change, prepare labels
+target_time_plot <- c(1990, 2024)
+
+df_plot_lite <- df_plot[df_plot$Country %in% c("China", "France", "Japan", "India", "United States") & df_plot$Year %in% seq(target_time_plot[1],target_time_plot[2]),]
+df_plot_lite[df_plot_lite$Country=="United States", "Country"] <- "USA"
+df_plot_lite_texts <- df_plot_lite[df_plot_lite$Year==target_time_plot[2],]
+df_plot_lite_texts$sign <- ifelse(df_plot_lite_texts$Norm_Articles > 100, "+", "")
+df_plot_lite_texts$label <- paste0(df_plot_lite_texts$Country, ": ", df_plot_lite_texts$sign, round(df_plot_lite_texts$Norm_Articles-100,0), "%")
+
+
+# DFs for plot curves
+curve_2018_2021 <- data.frame(x1 = x_annot_2018+margin_x_curve, x2 = x_annot_2021-margin_x_curve, y1 = y_annot+margin_y_curve, y2 = y_annot+margin_y_curve)
+curve_2021_2024 <- data.frame(x1 = x_annot_2021+margin_x_curve, x2 = x_annot_2024-margin_x_curve, y1 = y_annot+margin_y_curve, y2 = y_annot+margin_y_curve)
+
+delta_all_countries_2018_2021 <- (df_total_articles_year[df_total_articles_year$Year==2021,"Articles"] - df_total_articles_year[df_total_articles_year$Year==2018,"Articles"]) *100 / df_total_articles_year[df_total_articles_year$Year==2018,"Articles"]
+delta_all_countries_2021_2024 <- (df_total_articles_year[df_total_articles_year$Year==2024,"Articles"] - df_total_articles_year[df_total_articles_year$Year==2021,"Articles"]) *100 / df_total_articles_year[df_total_articles_year$Year==2021,"Articles"]
+
+
+# Plot
+lines_selected <- ggplot(df_plot_lite, aes(x=Year, y=Norm_Articles, color=Country))+
+  # Main line plot
+  geom_line(linewidth = 0.75)+
+  
+  # Dashed line 100%
+  annotate("segment", x = target_time_plot[1], xend=target_time_plot[2], y=100, yend=100, linewidth=0.6, color="black", linetype=2)+
+  
+  # Remove grid lines beyond 2024
+  annotate("rect", xmin=target_time_plot[2]+0.1, xmax=target_time_plot[2]+5.9, ymin=-1, ymax=160, fill="#f6f8fa")+
+  
+  # Inset selected countries
+  annotate("rect", xmin=target_time_plot[2]+0.1, xmax=target_time_plot[2]+5.9, ymin=47, ymax=150, color="lightgrey", linewidth=0.5,  fill="#e8eaed", alpha=0.6)+
+  
+  ## Texts
+  annotate("text", x=target_time_plot[2]+2.8, y=64, label="Changes", color=color_annot, size = size_annot+2, family = family_annot, hjust=0.5)+
+  annotate("text", x=target_time_plot[2]+2.8, y=55, label="2021-2024", color=color_annot, size = size_annot+2, family = family_annot, hjust=0.5)+
+  
+  # Country annotations
+  geom_text(data=df_plot_lite_texts, aes(x=target_time_plot[2]+0.3, y=Norm_Articles, label = label), hjust=0, size = font_size-10)+
+  
+  scale_x_continuous(limits = c(target_time_plot[1]-0.2,target_time_plot[2]+6.3), breaks = seq(target_time_plot[1], target_time_plot[2], by=2), expand = c(0,0))+
+  scale_y_continuous(expand=c(0,0))+
+  scale_color_manual(values = palette)+
+  
+  # Inset worldwide
+  annotate("rect", xmin=x_annot_2018-2, xmax=x_annot_2024+2, ymin=y_annot-8, ymax=y_annot+35, color="lightgrey", linewidth=0.5,  fill="#e8eaed", alpha=0.6)+
+  
+  ## Texts
+  annotate("text", x=x_annot_2021, y=y_annot+27, label="Worldwide changes", color=color_annot, size = size_annot+3, family = family_annot)+
+  annotate("text", x=x_annot_2018, y=y_annot, label="2018", color=color_annot, size = size_annot, family = family_annot)+
+  annotate("text", x=x_annot_2021, y=y_annot, label="2021", color=color_annot, size = size_annot, family = family_annot)+
+  annotate("text", x=x_annot_2024, y=y_annot, label="2024", color=color_annot, size = size_annot, family = family_annot)+
+  
+  ## Curves and arrows
+  geom_curve(aes(x = x1, y = y1, xend = x2, yend = y2, colour = "curve"), data = curve_2018_2021, curvature = -0.4, linewidth = 0.5, color="black",
+             arrow = arrow_curve)+
+  geom_curve(aes(x = x1, y = y1, xend = x2, yend = y2, colour = "curve"), data = curve_2021_2024, curvature = -0.4, linewidth = 0.5, color="black",
+             arrow = arrow_curve)+
+  annotate("text", x=x_annot_2018+3, y=y_annot+16, label=paste0("+", round(delta_all_countries_2018_2021,),"%"), color="darkgreen", size=size_annot, family=family_annot)+
+  annotate("text", x=x_annot_2021+3, y=y_annot+16, label=paste0(round(delta_all_countries_2021_2024,),"%"), color="darkred", size=size_annot, family=family_annot)+
+  
+  
+  # Style
+  ylab("Number of studies (% over 2021)")+
+  labs(title = "Evolution of number of cancer studies, normalized to 2021")+
+  theme_minimal(base_family = "Calibri")+
+  theme(
+    plot.background = element_rect(fill = '#f6f8fa', color = '#f6f8fa'),
+    text = element_text(family = "Calibri", size = font_size+9, color = "black"),
+    axis.title = element_text(size = font_size + 8),
+    axis.text = element_text(color = "black", size = font_size+6),
+    axis.text.x = element_text(angle = 90, vjust=0.5),
+    plot.title = element_text(size = font_size + 24, family = "Calibri", hjust = 0.5),
+    legend.position = "none" 
+  )
+  
+
+width_out = 1920
+height_out = 1080
+
+ggsave(plot = lines_selected, filename = file.path(out_dir, "evolution_norm_2021.jpg"), device = "jpg", width = width_out, height = height_out, units = "px")
+
+
+lines_selected
+```
+
+
+
+
+
+```{r, warning=F}
+width_out = 1920
+height_out = 1080
+
+ggsave(plot = lines_selected, filename = file.path(out_dir, "evolution_norm_2021.jpg"), device = "jpg", width = width_out, height = height_out, units = "px")
+```
+
+
+
+
+
+
